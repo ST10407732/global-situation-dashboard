@@ -626,3 +626,63 @@ Contributions, feature requests, bug reports, and suggestions are welcome.
 # License
 
 MIT License
+
+---
+
+# ICE Task 4: Edge AI on the Global Awareness Dashboard (Student Submission)
+
+All models run locally. No cloud AI services are used. The only external network calls are to the public USGS earthquake feed and a one-time download of the model weights.
+
+## Model A vs Model B vs Model C
+
+| Model | Type | Implementation |
+|---|---|---|
+| A | Deterministic | Llama 3.1 via Ollama with `temperature: 0`, `top_k: 1` and a fixed `seed: 42`. Greedy decoding always picks the most likely next token, so the same input gives the same output. |
+| B | Probabilistic | The same Llama 3.1 with `temperature: 0.9`, `top_p: 0.95`, `top_k: 40` and no seed. Tokens are sampled, so repeated runs on the same input differ. |
+| C | Tencent R3-Skill | R3-Embedding-0.6B (recall) followed by R3-Rerank-0.6B (rerank), run locally through a Python FastAPI service. It is a skill router, not a text generator: it maps each question to the most relevant dashboard skill. It is deterministic at inference. |
+
+## Files added
+
+- `server/models.mjs`: Express server (port 5051) with `/model-a`, `/model-b` and `/model-c` endpoints.
+- `r3_service.py`: FastAPI service (port 8060) running the R3-Skill two-stage retriever.
+- `public/models-demo.html`: test page that sends the 6 standard questions twice to each model, using live USGS earthquake data plus a snapshot of the dashboard panel values.
+
+## How to run
+
+1. `npm install`, then `ollama pull llama3.1`
+2. Terminal 1: `node server/index.js`
+3. Terminal 2: `npm run dev`
+4. Terminal 3: `node server/models.mjs`
+5. Terminal 4 (first time only: `python -m venv .venv` and `pip install sentence-transformers fastapi uvicorn`):
+   `.venv\Scripts\Activate.ps1` then `uvicorn r3_service:app --port 8060`
+6. Open `http://localhost:5173/models-demo.html` and click "Run all 6 questions x2".
+
+## Standard questions asked (each twice per model)
+
+1. Is there significant seismic activity right now, based on the current data?
+2. Which region currently shows the highest overall risk?
+3. Summarise today's cybersecurity threat level in one sentence.
+4. Is volcanic activity trending up or down this week?
+5. Give one recommendation based on current global risk levels.
+6. How confident are you in this assessment, and why?
+
+## Results
+
+```
+PASTE THE COPIED RESULTS HERE
+```
+
+## Findings
+
+- **Consistency:** Model A (temperature 0, fixed seed) is designed to give identical output on repeated runs. Model B (temperature 0.9, no seed) varies its wording between runs. Model C returns the same ranking and scores every time, because it has no sampling step.
+- **Data limits:** several dashboard feeds were offline during testing (KEV, Ransomware, Threat Intel, Internet Outages, BGP, Aircraft), and the dashboard keeps no volcano history, so question 4 cannot be answered from the data.
+- **Most useful for a live risk dashboard:** Model A, because risk answers must be repeatable and auditable. Model C is best used in front of A, to route each question to the right data.
+- **Live learning or static:** static with scheduled, reviewed updates. Learning from live feeds risks data poisoning and unnoticed drift, while a fixed model can go stale, so a controlled update process balances the two.
+
+## Challenges
+
+- `ResolutionImpossible` during `pip install`: fixed with a project virtual environment (`.venv`).
+- `ERR_UNSAFE_PORT (-312)` on port 5060: browsers block that port, so Model C moved to port 8060.
+- "Cannot GET /" on the servers is expected, because they only answer POST requests from the test page.
+- Running four processes at once, and slow Llama calls on a laptop without a dedicated GPU.
+- R3-Skill is a retriever and reranker, not a chat model, so it was implemented as a router.

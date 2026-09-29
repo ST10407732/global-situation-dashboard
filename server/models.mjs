@@ -34,7 +34,7 @@ app.post("/model-b", async (req, res) => {
 
 // Model C: forwards to the Python R3-Skill service
 app.post("/model-c", async (req, res) => {
-  const r = await fetch("http://localhost:5060/route", {
+  const r = await fetch("http://localhost:8060/route", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ question: req.body.question }),

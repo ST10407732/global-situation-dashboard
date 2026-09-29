@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<body style="font-family:sans-serif;max-width:800px;margin:2rem auto">
+<h2>Model A vs B vs C</h2>
+<input id="q" style="width:70%" value="What is the strongest earthquake right now?">
+<button onclick="run()">Run x2</button>
+<pre id="out"></pre>
+<script>
+async function run() {
+  const out = document.getElementById("out");
+  out.textContent = "Running...";
+  const quakes = (await (await fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson")).json())
+    .features.slice(0, 10).map(f => ({ place: f.properties.place, mag: f.properties.mag }));
+  const question = document.getElementById("q").value;
+  let text = "";
+  for (const m of ["model-a", "model-b", "model-c"]) {
+    for (let i = 1; i <= 2; i++) {
+      const r = await fetch("http://localhost:5051/" + m, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, data: quakes })
+      });
+      const d = await r.json();
+      text += `[${d.model}] run ${i}:\n${d.answer ?? JSON.stringify(d.ranking)}\n\n`;
+    }
+  }
+  out.textContent = text;
+}
+</script>
+</body>
+</html>
